@@ -13,7 +13,9 @@ const PORT = process.env.PORT || 6002;
 const s3 = new S3Client({ region: "eu-north-1"});
 
 app.use(express.json());
-
+app.get("/", (req, res) => {
+  res.send("file upload service!!");
+});
 // POST /generate-upload-url
 app.post('/generate-upload-url', async (req, res) => {
   try {
