@@ -6,17 +6,20 @@ import { v4 as uuidv4 } from 'uuid';
 import cors from 'cors';
 
 dotenv.config();
-const corsOptions = {
+
+const app = express();
+const PORT = process.env.PORT || 6002;
+
+// CORS middleware must be configured before routes
+app.use(cors({
   origin: ['http://localhost:3000', 'https://your-frontend-domain.com'],
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
-};
+}));
 
-// Apply CORS middleware
-app.use(cors(corsOptions));
-const app = express();
-const PORT = process.env.PORT || 6002;
+// Handle preflight requests
+app.options('*', cors());
 
 // S3 config with explicit credentials
 const s3 = new S3Client({ 
@@ -29,20 +32,21 @@ const s3 = new S3Client({
 
 app.use(express.json());
 
+// Your routes here
 app.get("/", (req, res) => {
   res.send("File Upload Service is running!");
 });
 
 app.post('/generate-upload-url', async (req, res) => {
   try {
-    console.log('Request received:', req.body); // Debug log
+    console.log('Request received:', req.body);
     const { meetingId, originalFileName } = req.body;
 
     if (!meetingId || !originalFileName) {
       console.error('Missing required fields');
       return res.status(400).json({ 
         success: false,
-        message: 'Missing required fields: meetingId and originalFileName are required' 
+        message: 'Missing required fields' 
       });
     }
 
@@ -68,7 +72,7 @@ app.post('/generate-upload-url', async (req, res) => {
     console.error('Error in /generate-upload-url:', error);
     res.status(500).json({ 
       success: false,
-      message: 'Failed to generate signed URL',
+      message: 'Internal server error',
       error: process.env.NODE_ENV === 'production' ? undefined : error.message
     });
   }
