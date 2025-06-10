@@ -10,16 +10,20 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 6002;
 
-// CORS middleware must be configured before routes
-app.use(cors({
-  origin: ['http://localhost:3000', 'https://your-frontend-domain.com'],
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
-
-// Handle preflight requests
-app.options('*', cors());
+// Enable CORS for all routes
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
+});
 
 // S3 config with explicit credentials
 const s3 = new S3Client({ 
@@ -32,7 +36,6 @@ const s3 = new S3Client({
 
 app.use(express.json());
 
-// Your routes here
 app.get("/", (req, res) => {
   res.send("File Upload Service is running!");
 });
