@@ -3,9 +3,18 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import express from 'express';
 import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
+import cors from 'cors';
 
 dotenv.config();
+const corsOptions = {
+  origin: ['http://localhost:3000', 'https://your-frontend-domain.com'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
 
+// Apply CORS middleware
+app.use(cors(corsOptions));
 const app = express();
 const PORT = process.env.PORT || 6002;
 
