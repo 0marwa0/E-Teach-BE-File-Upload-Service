@@ -80,42 +80,55 @@ app.post('/generate-upload-url', async (req, res) => {
     });
   }
 });
-const FINAL_BUCKET = process.env.FINAL_BUCKET;
-const TEMP_BUCKET = process.env.TEMP_BUCKET;
-app.post ("/webhook/s3-final-upload",async (req,res)=>{
+
+
+app.post("/webhook/s3-final-upload", async (req, res) => {
   try {
+    const snsMessage = JSON.parse(req.body.Message); // Parse SNS message body
+    const records = snsMessage.Records;
 
-const snsRecord = req.body.Records;
+    if (!records || !Array.isArray(records)) {
+      return res.status(400).send("Invalid SNS message format");
+    }
 
-for (const record of snsRecord) {
-  const message=JSON.parse(record.Sns.Message);
-  const s3Record=message.Records[0];
-const key=decodeURIComponent(s3Record.s3.object.key)
-const meetingId=key.split("/")[0];
-await s3.send(new DeleteObjectCommand({
-  Bucket:TEMP_BUCKET,
-  Key:key
-}))
+    for (const s3Record of records) {
+      const key = decodeURIComponent(s3Record.s3.object.key.replace(/\+/g, " "));
+      const meetingId = key.split("/")[0];
 
-await s3.send(new CopyObjectCommand({
-  Bucket:FINAL_BUCKET,
-  Key:key,
-  CopySource:`${TEMP_BUCKET}/${key}`
-}))
+      console.log(`📦 Processing uploaded file: ${key}`);
 
-// to do 
-// store it in database
-// send it to realtime service
-}
-} catch (error) {
-  console.error('Error in /webhook/s3-final-upload:', error);
-  res.status(500).json({ 
-    success: false,
-    message: 'Internal server error',
-    error: process.env.NODE_ENV === 'production' ? undefined : error.message
-  });
-}})
+      // Copy the file to final bucket
+      await s3.send(new CopyObjectCommand({
+        Bucket: FINAL_BUCKET,
+        Key: key,
+        CopySource: `${TEMP_BUCKET}/${key}`,
+      }));
 
+      // Delete from temp bucket
+      await s3.send(new DeleteObjectCommand({
+        Bucket: TEMP_BUCKET,
+        Key: key,
+      }));
+
+      // TODO:
+      // Store info in database (e.g. meetingId, fileName)
+      // Notify frontend via WebSocket or Redis pub/sub
+
+      console.log(` Moved file to final bucket: ${key}`);
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Error in /webhook/s3-final-upload:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: process.env.NODE_ENV === "production" ? undefined : error.message,
+    });
+  }
+});
+
+module.exports = router;
 
 
 
