@@ -128,7 +128,7 @@ app.post("/webhook/s3-final-upload", async (req, res) => {
   }
 });
 
-module.exports = router;
+
 
 
 
