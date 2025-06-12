@@ -9,6 +9,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 6002;
+app.use(express.json({ type: ["application/json", "text/plain"] }));
 
 // Enable CORS for all routes
 app.use((req, res, next) => {
@@ -84,7 +85,20 @@ app.post('/generate-upload-url', async (req, res) => {
 
 app.post("/webhook/s3-final-upload", async (req, res) => {
   try {
-    const snsMessage = JSON.parse(req.body.Message); // Parse SNS message body
+    // If it's a subscription confirmation, auto-confirm it
+    if (req.headers["x-amz-sns-message-type"] === "SubscriptionConfirmation") {
+      const subscribeUrl = req.body.SubscribeURL;
+      console.log("🔔 SNS Subscription Confirmation URL:", subscribeUrl);
+
+      // Confirm by fetching the URL
+      const axios = require("axios");
+      await axios.get(subscribeUrl);
+      console.log("✅ SNS Subscription confirmed.");
+      return res.status(200).send("Subscription confirmed");
+    }
+
+    // Normal SNS Notification message
+    const snsMessage = JSON.parse(req.body.Message);
     const records = snsMessage.Records;
 
     if (!records || !Array.isArray(records)) {
@@ -97,29 +111,23 @@ app.post("/webhook/s3-final-upload", async (req, res) => {
 
       console.log(`📦 Processing uploaded file: ${key}`);
 
-      // Copy the file to final bucket
       await s3.send(new CopyObjectCommand({
         Bucket: FINAL_BUCKET,
         Key: key,
         CopySource: `${TEMP_BUCKET}/${key}`,
       }));
 
-      // Delete from temp bucket
       await s3.send(new DeleteObjectCommand({
         Bucket: TEMP_BUCKET,
         Key: key,
       }));
 
-      // TODO:
-      // Store info in database (e.g. meetingId, fileName)
-      // Notify frontend via WebSocket or Redis pub/sub
-
-      console.log(` Moved file to final bucket: ${key}`);
+      console.log(`✅ Moved file to final bucket: ${key}`);
     }
 
     res.status(200).json({ success: true });
   } catch (error) {
-    console.error("Error in /webhook/s3-final-upload:", error);
+    console.error("❌ Error in /webhook/s3-final-upload:", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -127,6 +135,7 @@ app.post("/webhook/s3-final-upload", async (req, res) => {
     });
   }
 });
+
 
 
 
