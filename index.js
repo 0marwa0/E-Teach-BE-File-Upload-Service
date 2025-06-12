@@ -40,7 +40,8 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.send("File Upload Service is running!");
 });
-
+const TEMP_BUCKET = process.env.TEMP_BUCKET;
+const FINAL_BUCKET = process.env.FINAL_BUCKET;
 app.post('/generate-upload-url', async (req, res) => {
   try {
     console.log('Request received:', req.body);
