@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand,DeleteObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import express from 'express';
 import dotenv from 'dotenv';
@@ -80,6 +80,44 @@ app.post('/generate-upload-url', async (req, res) => {
     });
   }
 });
+const FINAL_BUCKET = process.env.FINAL_BUCKET;
+const TEMP_BUCKET = process.env.TEMP_BUCKET;
+app.post ("/webhook/s3-final-upload",async (req,res)=>{
+  try {
+
+const snsRecord = req.body.Records;
+
+for (const record of snsRecord) {
+  const message=JSON.parse(record.Sns.Message);
+  const s3Record=message.Records[0];
+const key=decodeURIComponent(s3Record.s3.object.key)
+const meetingId=key.split("/")[0];
+await s3.send(new DeleteObjectCommand({
+  Bucket:TEMP_BUCKET,
+  Key:key
+}))
+
+await s3.send(new CopyObjectCommand({
+  Bucket:FINAL_BUCKET,
+  Key:key,
+  CopySource:`${TEMP_BUCKET}/${key}`
+}))
+
+// to do 
+// store it in database
+// send it to realtime service
+}
+} catch (error) {
+  console.error('Error in /webhook/s3-final-upload:', error);
+  res.status(500).json({ 
+    success: false,
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'production' ? undefined : error.message
+  });
+}})
+
+
+
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
