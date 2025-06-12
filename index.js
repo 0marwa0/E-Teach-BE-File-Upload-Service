@@ -82,6 +82,12 @@ app.post('/generate-upload-url', async (req, res) => {
   }
 });
 
+app.post("/webhook/s3-final-upload", (req, res, next) => {
+  console.log("📨 Incoming webhook POST");
+  console.log("Headers:", req.headers);
+  console.log("Body:", req.body);
+  next();
+});
 
 app.post("/webhook/s3-final-upload", async (req, res) => {
   try {
