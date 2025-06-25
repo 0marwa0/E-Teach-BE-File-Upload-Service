@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: upload-service
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AWS_REGION
+        value: your-region
+      - key: FINAL_BUCKET
+        value: your-final-bucket-name
+      - key: TEMP_BUCKET
+        value: your-temp-bucket-name
+      - key: SNS_TOPIC_ARN
+        value: arn:aws:sns:...
+      - fromGroup: upload-service-env
+  - type: web
+    name: realtime-service
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - fromGroup: realtime-service-env
